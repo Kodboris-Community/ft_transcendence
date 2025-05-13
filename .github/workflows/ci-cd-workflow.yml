@@ -35,30 +35,65 @@ jobs:
 
       - name: Build, tag, and push all images to ECR
         id: build-and-push
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: kodmicroservices
         run: |
-          echo "Building and pushing services to ECR..."
+          echo "Building and tagging services..."
+          cd frontend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
+          cd ..
 
-          SERVICES=(
-            frontend
-            apigateway
-            authservice
-            bucketservice
-            friendservice
-            gameplayservice
-            gameservice
-            mailservice
-            statusservice
-            usermanagement
-          )
+          cd apigateway
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:apigateway .
+          cd ..
 
-          for SERVICE in "${SERVICES[@]}"; do
-            IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${SERVICE}:${IMAGE_TAG}
-            echo "Building $SERVICE -> $IMAGE_URI"
-            docker build -t $IMAGE_URI ./$SERVICE
-            docker push $IMAGE_URI
-          done
+          cd authservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:authservice .
+          cd ..
 
-          echo "${{ steps.login-ecr.outputs.registry }}" > ecr_registry.txt
+          cd bucketservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:bucketservice .
+          cd ..
+
+          cd friendservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:friendservice .
+          cd ..
+
+          cd gameplayservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:gameplayservice .
+          cd ..
+
+          cd gameservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:gameservice .
+          cd ..
+
+          cd mailservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:mailservice .
+          cd ..
+
+          cd statusservice
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:statusservice .
+          cd ..
+
+          cd usermanagement
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:usermanagement .
+          cd ..
+          
+          echo "Pushing images to ECR..."
+
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:apigateway
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:authservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:bucketservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:friendservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:gameplayservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:gameservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:mailservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:statusservice
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:usermanagement
+
+          echo "$ECR_REGISTRY" > ecr_registry.txt
 
       - name: Upload ECR Registry Info
         uses: actions/upload-artifact@v4
@@ -67,13 +102,13 @@ jobs:
           path: ecr_registry.txt
 
   deploy:
-    name: Deploy Microservices to Remote Server
+    name: Deploy kodmicroservices to Remote Server
     runs-on: ubuntu-latest
     needs: build
     env:
-      IMAGE_TAG: ${{ github.sha }}
+      ECR_REPOSITORY: microservice-communication
+      DIRECTORY: MicroService-Communication-with-RabbitMQ-in-Docker
       COMPOSE: docker-compose.yml
-      DIRECTORY: your-app-directory  # <- CHANGE this if your EC2 repo directory name is different
 
     steps:
       - name: Download ECR Registry Info
@@ -96,7 +131,7 @@ jobs:
           port: ${{ secrets.PORT }}
           envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,ECR_REGISTRY,IMAGE_TAG,DIRECTORY,COMPOSE
           script: |
-            echo "Deploying microservices from $ECR_REGISTRY"
+            echo "Deploying kodmicroservices from $ECR_REGISTRY"
 
             cd $DIRECTORY
 
@@ -105,22 +140,9 @@ jobs:
               exit 1
             fi
 
-            SERVICES=(
-              frontend
-              apigateway
-              authservice
-              bucketservice
-              friendservice
-              gameplayservice
-              gameservice
-              mailservice
-              statusservice
-              usermanagement
-            )
-
-            for service in "${SERVICES[@]}"; do
+            for service in frontend apigateway authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
               echo "Updating image for $service..."
-              yq e ".services.${service}.image = \"${ECR_REGISTRY}/${service}:${IMAGE_TAG}\"" -i $COMPOSE
+              yq e ".services.${service}.image = \"${ECR_REGISTRY}/${ECR_REPOSITORY}:${service}\"" -i $COMPOSE
             done
 
             docker compose pull
