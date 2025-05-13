@@ -1,0 +1,134 @@
+name: CI/CD Pipeline for Microservice Architecture
+
+on:
+  push:
+    branches:
+      - taiwo-transcendence
+  pull_request:
+    branches:
+      - taiwo-transcendence
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: Build and Push Microservice Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push all images to ECR
+        id: build-and-push
+        run: |
+          echo "Building and pushing services to ECR..."
+
+          SERVICES=(
+            frontend
+            apigateway
+            authservice
+            bucketservice
+            friendservice
+            gameplayservice
+            gameservice
+            mailservice
+            statusservice
+            usermanagement
+          )
+
+          for SERVICE in "${SERVICES[@]}"; do
+            IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${SERVICE}:${IMAGE_TAG}
+            echo "Building $SERVICE -> $IMAGE_URI"
+            docker build -t $IMAGE_URI ./$SERVICE
+            docker push $IMAGE_URI
+          done
+
+          echo "${{ steps.login-ecr.outputs.registry }}" > ecr_registry.txt
+
+      - name: Upload ECR Registry Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecr-registry
+          path: ecr_registry.txt
+
+  deploy:
+    name: Deploy Microservices to Remote Server
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+      COMPOSE: docker-compose.yml
+      DIRECTORY: your-app-directory  # <- CHANGE this if your EC2 repo directory name is different
+
+    steps:
+      - name: Download ECR Registry Info
+        uses: actions/download-artifact@v4
+        with:
+          name: ecr-registry
+          path: .
+
+      - name: Read ECR Registry
+        run: |
+          ECR_REGISTRY=$(cat ecr_registry.txt)
+          echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+
+      - name: SSH Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.TEEWAI_HOST }}
+          username: ${{ secrets.TEEWAI_USERNAME }}
+          key: ${{ secrets.TEEWAI_KEY }}
+          port: ${{ secrets.PORT }}
+          envs: GITHUB_TRIGGERING_ACTOR,GITHUB_RUN_NUMBER,ECR_REGISTRY,IMAGE_TAG,DIRECTORY,COMPOSE
+          script: |
+            echo "Deploying microservices from $ECR_REGISTRY"
+
+            cd $DIRECTORY
+
+            if [[ ! -f "$COMPOSE" ]]; then
+              echo "docker-compose.yml file not found!"
+              exit 1
+            fi
+
+            SERVICES=(
+              frontend
+              apigateway
+              authservice
+              bucketservice
+              friendservice
+              gameplayservice
+              gameservice
+              mailservice
+              statusservice
+              usermanagement
+            )
+
+            for service in "${SERVICES[@]}"; do
+              echo "Updating image for $service..."
+              yq e ".services.${service}.image = \"${ECR_REGISTRY}/${service}:${IMAGE_TAG}\"" -i $COMPOSE
+            done
+
+            docker compose pull
+            docker compose up --build --force-recreate -d
+
+            if [[ $? == 0 ]]; then
+              echo "Deployment successful!"
+            else
+              echo "Deployment failed!"
+              exit 1
+            fi
