@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  authservice:
+    build: ./authservice
+    environment:
+      - SECRET_KEY=${AuthService_SECRET_KEY}
+      - DEBUG=${AuthService_DEBUG}
+      - INTRA_REDIRECT_URL=${INTRA_REDIRECT_URL}
+      - INTRA_UID=${INTRA_UID}
+      - INTRA_SECRET=${INTRA_SECRET}
+      - INTRA_API_URL=${INTRA_API_URL}
+      - INTRA_CALLBACK_URL=${INTRA_CALLBACK_URL}
+      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
+    hostname: authservice
+
+  bucketservice:
+    build: ./bucketservice
+    depends_on:
+      - bucketpostgres
+    environment:
+      - SECRET_KEY=${BucketService_SECRET_KEY}
+      - DEBUG=${BucketService_DEBUG}
+      - DB_NAME=${BucketService_DB_NAME}
+      - DB_USER=${BucketService_DB_USER}
+      - DB_PASSWORD=${BucketService_DB_PASSWORD}
+      - DB_HOST=bucketpostgres
+      - DB_PORT=5432
+    ports:
+      - "8014:8014"
+    hostname: bucketservice
+
+  friendservice:
+    build: ./friendservice
+    depends_on:
+      - friendspostgres
+    environment:
+      - SECRET_KEY=${FriendService_SECRET_KEY}
+      - DEBUG=${FriendService_DEBUG}
+      - DB_NAME=${FriendService_DB_NAME}
+      - DB_USER=${FriendService_DB_USER}
+      - DB_PASSWORD=${FriendService_DB_PASSWORD}
+      - DB_HOST=friendspostgres
+      - DB_PORT=5432
+    hostname: friendservice
+
+  gameplayservice:
+    build: ./gameplayservice
+    depends_on:
+      - redis
+    environment:
+      - SECRET_KEY=${GamePlayService_SECRET_KEY}
+      - DEBUG=${GamePlayService_DEBUG}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8011:8011"
+    hostname: gameplayservice
+
+  gameservice:
+    build: ./gameservice
+    depends_on:
+      - gamepostgres
+    environment:
+      - SECRET_KEY=${GameService_SECRET_KEY}
+      - DEBUG=${GameService_DEBUG}
+      - DB_NAME=${GameService_DB_NAME}
+      - DB_USER=${GameService_DB_USER}
+      - DB_PASSWORD=${GameService_DB_PASSWORD}
+      - DB_HOST=gamepostgres
+      - DB_PORT=5432
+    hostname: gameservice
+
+  mailservice:
+    build: ./mailservice
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - SECRET_KEY=${MailService_SECRET_KEY}
+      - DEBUG=${MailService_DEBUG}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
+      - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
+      - EMAIL_HOST=${MailService_EMAIL_HOST}
+      - EMAIL_PORT=${MailService_EMAIL_PORT}
+      - EMAIL_USE_TLS=${MailService_EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${MailService_EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${MailService_EMAIL_HOST_PASSWORD}
+    ports:
+      - "8025:8025"
+    hostname: mailservice
+
+  statusservice:
+    build: ./statusservice
+    environment:
+      - SECRET_KEY=${StatusService_SECRET_KEY}
+      - DEBUG=${StatusService_DEBUG}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8020:8020"
+    hostname: statusservice
+
+  usermanagement:
+    build: ./usermanagement
+    depends_on:
+      - userpostgres
+    environment:
+      - SECRET_KEY=${UserManagement_SECRET_KEY}
+      - DEBUG=${UserManagement_DEBUG}
+      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
+      - DB_NAME=${UserManagement_DB_NAME}
+      - DB_USER=${UserManagement_DB_USER}
+      - DB_PASSWORD=${UserManagement_DB_PASSWORD}
+      - DB_HOST=userpostgres
+      - DB_PORT=5432
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
+      - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
+    hostname: usermanagement
+
+  rabbitmq:
+    image: rabbitmq:3.8.17-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "node_health_check"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    hostname: rabbitmq
+
+  redis:
+    image: redis:6.2.5
+    ports:
+      - "6379:6379"
+    hostname: redis
+
+  userpostgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${UserManagement_DB_USER}
+      POSTGRES_PASSWORD: ${UserManagement_DB_PASSWORD}
+      POSTGRES_DB: ${UserManagement_DB_NAME}
+    ports:
+      - "5432:5432"
+    hostname: userpostgres
+
+  gamepostgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${GameService_DB_USER}
+      POSTGRES_PASSWORD: ${GameService_DB_PASSWORD}
+      POSTGRES_DB: ${GameService_DB_NAME}
+    ports:
+      - "5433:5432"
+    hostname: gamepostgres
+
+  friendspostgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${FriendService_DB_USER}
+      POSTGRES_PASSWORD: ${FriendService_DB_PASSWORD}
+      POSTGRES_DB: ${FriendService_DB_NAME}
+    ports:
+      - "5434:5432"
+    hostname: friendspostgres
+
+  bucketpostgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${BucketService_DB_USER}
+      POSTGRES_PASSWORD: ${BucketService_DB_PASSWORD}
+      POSTGRES_DB: ${BucketService_DB_NAME}
+    ports:
+      - "5435:5432"
+    hostname: bucketpostgres
+
+
