@@ -34,7 +34,7 @@ services:
       - SECRET_KEY=${ApiGateway_SECRET_KEY}
       - DEBUG=${ApiGateway_DEBUG}
       - FRONTEND_URL=${FRONTEND_URL}
-      - ALLOWED_HOSTS=apigateway,friendservice,gameplayservice,gameservice,statusservice,usermanagement,frontend,authservice,bucketservice
+      - ALLOWED_HOSTS=localhost,127.0.0.1,apigateway,friendservice,gameplayservice,gameservice,statusservice,usermanagement,frontend,authservice,bucketservice
     volumes:
       - ./apigateway:/app
     networks:
@@ -69,8 +69,8 @@ services:
       - DB_NAME=${BucketService_DB_NAME}
       - DB_USER=${BucketService_DB_USER}
       - DB_PASSWORD=${BucketService_DB_PASSWORD}
-      - DB_HOST=${BucketService_DB_HOST}
-      - DB_PORT=${BucketService_DB_PORT}
+      - DB_HOST=bucketpostgres
+      - DB_PORT=5432
     networks:
       - backend
       - frontend
@@ -87,11 +87,12 @@ services:
       - DB_NAME=${FriendService_DB_NAME}
       - DB_USER=${FriendService_DB_USER}
       - DB_PASSWORD=${FriendService_DB_PASSWORD}
-      - DB_HOST=${FriendService_DB_HOST}
-      - DB_PORT=${FriendService_DB_PORT}
+      - DB_HOST=friendspostgres
+      - DB_PORT=5432
     networks:
       - backend
       - frontend
+    hostname: friendservice
 
   gameplayservice:
     container_name: gameplayservice
@@ -101,8 +102,8 @@ services:
     environment:
       - SECRET_KEY=${GamePlayService_SECRET_KEY}
       - DEBUG=${GamePlayService_DEBUG}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - backend
       - frontend
@@ -119,8 +120,8 @@ services:
       - DB_NAME=${GameService_DB_NAME}
       - DB_USER=${GameService_DB_USER}
       - DB_PASSWORD=${GameService_DB_PASSWORD}
-      - DB_HOST=${GameService_DB_HOST}
-      - DB_PORT=${GameService_DB_PORT}
+      - DB_HOST=gamepostgres
+      - DB_PORT=5432
     networks:
       - backend
     hostname: gameservice
@@ -134,8 +135,8 @@ services:
     environment:
       - SECRET_KEY=${MailService_SECRET_KEY}
       - DEBUG=${MailService_DEBUG}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
@@ -155,8 +156,8 @@ services:
     environment:
       - SECRET_KEY=${StatusService_SECRET_KEY}
       - DEBUG=${StatusService_DEBUG}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     networks:
       - backend
       - frontend
@@ -174,10 +175,10 @@ services:
       - DB_NAME=${UserManagement_DB_NAME}
       - DB_USER=${UserManagement_DB_USER}
       - DB_PASSWORD=${UserManagement_DB_PASSWORD}
-      - DB_HOST=${UserManagement_DB_HOST}
-      - DB_PORT=${UserManagement_DB_PORT}
-      - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - DB_HOST=userpostgres
+      - DB_PORT=5432
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
@@ -191,7 +192,7 @@ services:
     container_name: rabbitmq
     image: rabbitmq:3.8.17-management
     ports:
-      - "5672:${RABBITMQ_PORT}"
+      - "5672:5672"
       - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
@@ -208,58 +209,57 @@ services:
     container_name: redis
     image: redis:6.2.5
     ports:
-      - "6379:${REDIS_PORT}"
+      - "6379:6379"
     networks:
       - backend
 
   userpostgres:
     container_name: userpostgres
-    image: postgres:13
+    image: postgres:14
     environment:
       POSTGRES_USER: ${UserManagement_DB_USER}
       POSTGRES_PASSWORD: ${UserManagement_DB_PASSWORD}
       POSTGRES_DB: ${UserManagement_DB_NAME}
     ports:
-      - "5432:${UserManagement_DB_PORT}"
+      - "5432:5432"
     networks:
       - backend
 
   gamepostgres:
     container_name: gamepostgres
-    image: postgres:13
+    image: postgres:14
     environment:
       POSTGRES_USER: ${GameService_DB_USER}
       POSTGRES_PASSWORD: ${GameService_DB_PASSWORD}
       POSTGRES_DB: ${GameService_DB_NAME}
     ports:
-      - "5433:${GameService_DB_PORT}"
+      - "5433:5432"
     networks:
       - backend
 
   friendspostgres:
     container_name: friendspostgres
-    image: postgres:13
+    image: postgres:14
     environment:
       POSTGRES_USER: ${FriendService_DB_USER}
       POSTGRES_PASSWORD: ${FriendService_DB_PASSWORD}
       POSTGRES_DB: ${FriendService_DB_NAME}
     ports:
-      - "5434:${FriendService_DB_PORT}"
+      - "5434:5432"
     networks:
       - backend
 
   bucketpostgres:
     container_name: bucketpostgres
-    image: postgres:13
+    image: postgres:14
     environment:
       POSTGRES_USER: ${BucketService_DB_USER}
       POSTGRES_PASSWORD: ${BucketService_DB_PASSWORD}
       POSTGRES_DB: ${BucketService_DB_NAME}
     ports:
-      - "5435:${BucketService_DB_PORT}"
+      - "5435:5432"
     networks:
       - backend
-
 
 networks:
   backend:
