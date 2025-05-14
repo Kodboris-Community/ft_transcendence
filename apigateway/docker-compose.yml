@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  apigateway:
+    build: ./apigateway
+    environment:
+      - SECRET_KEY=${ApiGateway_SECRET_KEY}
+      - DEBUG=${ApiGateway_DEBUG}
+      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
+      - ALLOWED_HOSTS=localhost,127.0.0.1,<VM3_PRIVATE_IP>,apigateway
+    volumes:
+      - ./apigateway:/app
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
