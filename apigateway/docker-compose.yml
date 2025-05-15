@@ -6,8 +6,8 @@ services:
     environment:
       - SECRET_KEY=${ApiGateway_SECRET_KEY}
       - DEBUG=${ApiGateway_DEBUG}
-      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
-      - ALLOWED_HOSTS=localhost,127.0.0.1,<VM3_PRIVATE_IP>,apigateway
+      - FRONTEND_URL=https://jaiyelearningdevops.com
+      - ALLOWED_HOSTS=localhost,127.0.0.1,10.0.0.20,apigateway
     volumes:
       - ./apigateway:/app
     ports:
