@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  apigateway:
+    container_name: apigateway
+    build: .
+    environment:
+      - SECRET_KEY=${ApiGateway_SECRET_KEY}
+      - DEBUG=${ApiGateway_DEBUG}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - ALLOWED_HOSTS=apigateway,frontend
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+      - frontend
+    hostname: apigateway
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
