@@ -2,16 +2,22 @@ version: '3.8'
 
 services:
   apigateway:
-    build: ./apigateway
+    build: .
     environment:
       - SECRET_KEY=${ApiGateway_SECRET_KEY}
       - DEBUG=${ApiGateway_DEBUG}
       - FRONTEND_URL=https://jaiyelearningdevops.com
-      - ALLOWED_HOSTS=localhost,127.0.0.1,10.0.0.20,apigateway
-    volumes:
-      - ./apigateway:/app
+      - ALLOWED_HOSTS=localhost,127.0.0.1,10.0.0.20,apigateway,jaiyelearningdevops.com
+
+      # Backend service URLs (pointing to VM3 at 10.0.0.20)
+      - AUTHSERVICE_URL=http://10.0.0.20:8001
+      - FRIENDSERVICE_URL=http://10.0.0.20:8012
+      - GAMESERVICE_URL=http://10.0.0.20:8010
+      - USERMANAGEMENT_URL=http://10.0.0.20:8004
+
     ports:
       - "8000:8000"
+
     networks:
       - backend
 

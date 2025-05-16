@@ -10,8 +10,8 @@ def str_to_bool(value):
 SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-secret')
 DEBUG = str_to_bool(os.environ.get('DEBUG', 'false'))
 
-# Updated ALLOWED_HOSTS logic to handle '*'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+# ALLOWED_HOSTS should always include the domain and relevant internal IPs
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',') + ['jaiyelearningdevops.com']
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -46,11 +46,12 @@ EXCLUDED_ROUTES = [
     '/user/pwd/change', '/user/image', '/user/image/serve', '/favicon.ico'
 ]
 
+# Use private backend IP via environment variables
 SERVICE_ROUTES = {
-    '/auth': 'http://authservice:8001',
-    '/friends': 'http://friendservice:8012',
-    '/game': 'http://gameservice:8010',
-    '/user': 'http://usermanagement:8004',
+    '/auth': os.getenv('AUTHSERVICE_URL', 'http://10.0.0.20:8001'),
+    '/friends': os.getenv('FRIENDSERVICE_URL', 'http://10.0.0.20:8012'),
+    '/game': os.getenv('GAMESERVICE_URL', 'http://10.0.0.20:8010'),
+    '/user': os.getenv('USERMANAGEMENT_URL', 'http://10.0.0.20:8004'),
 }
 
 ROOT_URLCONF = 'apigateway.urls'
@@ -74,3 +75,4 @@ TEMPLATES = [
 WSGI_APPLICATION = 'apigateway.wsgi.application'
 
 STATIC_URL = '/static/'
+

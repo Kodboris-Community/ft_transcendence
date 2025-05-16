@@ -11,7 +11,9 @@ services:
       - INTRA_SECRET=${INTRA_SECRET}
       - INTRA_API_URL=${INTRA_API_URL}
       - INTRA_CALLBACK_URL=${INTRA_CALLBACK_URL}
-      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
+      - FRONTEND_URL=https://jaiyelearningdevops.com
+    ports:
+      - "8001:8001"
     hostname: authservice
 
   bucketservice:
@@ -42,6 +44,8 @@ services:
       - DB_PASSWORD=${FriendService_DB_PASSWORD}
       - DB_HOST=friendspostgres
       - DB_PORT=5432
+    ports:
+      - "8012:8012"
     hostname: friendservice
 
   gameplayservice:
@@ -69,6 +73,8 @@ services:
       - DB_PASSWORD=${GameService_DB_PASSWORD}
       - DB_HOST=gamepostgres
       - DB_PORT=5432
+    ports:
+      - "8010:8010"
     hostname: gameservice
 
   mailservice:
@@ -112,7 +118,7 @@ services:
     environment:
       - SECRET_KEY=${UserManagement_SECRET_KEY}
       - DEBUG=${UserManagement_DEBUG}
-      - FRONTEND_URL=https://<VM1_PRIVATE_IP>
+      - FRONTEND_URL=https://jaiyelearningdevops.com
       - DB_NAME=${UserManagement_DB_NAME}
       - DB_USER=${UserManagement_DB_USER}
       - DB_PASSWORD=${UserManagement_DB_PASSWORD}
@@ -124,6 +130,8 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
       - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
+    ports:
+      - "8004:8004"
     hostname: usermanagement
 
   rabbitmq:
@@ -186,5 +194,3 @@ services:
     ports:
       - "5435:5432"
     hostname: bucketpostgres
-
-
