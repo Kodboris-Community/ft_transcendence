@@ -7,8 +7,8 @@ services:
     environment:
       - SECRET_KEY=${ApiGateway_SECRET_KEY}
       - DEBUG=${ApiGateway_DEBUG}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - ALLOWED_HOSTS=apigateway,frontend
+      - FRONTEND_URL=https://51.21.250.243
+      - ALLOWED_HOSTS=apigateway,51.21.250.243,192.168.1.86,192.168.1.111
     volumes:
       - .:/app
     ports:

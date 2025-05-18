@@ -86,10 +86,10 @@ jobs:
       - name: SSH to frontend instance
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.FRONTEND_HOST }}
-          username: ${{ secrets.FRONTEND_USER }}
-          key: ${{ secrets.FRONTEND_KEY }}
-          port: ${{ secrets.FRONTEND_PORT }}
+          host: ${{ secrets.TEEWAI_FRONTEND_HOST }}
+          username: ${{ secrets.TEEWAI_FRONTEND_USER }}
+          key: ${{ secrets.TEEWAI_FRONTEND_KEY }}
+          port: ${{ secrets.PORT }}
           script: |
             cd ft_transcendence/frontend
             yq e ".services.frontend.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:frontend'" -i docker-compose.yml
@@ -98,7 +98,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway to EC2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, apigateway-runner]  # updated to use self-hosted runner
     needs: build
 
     steps:
@@ -108,22 +108,16 @@ jobs:
 
       - run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
 
-      - name: SSH to API Gateway instance
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.APIGATEWAY_HOST }}
-          username: ${{ secrets.APIGATEWAY_USER }}
-          key: ${{ secrets.APIGATEWAY_KEY }}
-          port: ${{ secrets.APIGATEWAY_PORT }}
-          script: |
-            cd ft_transcendence/apigateway
-            yq e ".services.apigateway.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:apigateway'" -i docker-compose.yml
-            docker compose pull
-            docker compose up -d --force-recreate
+      - name: Update and restart API Gateway service
+        run: |
+          cd ft_transcendence/apigateway
+          yq e ".services.apigateway.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:apigateway'" -i docker-compose.yml
+          docker compose pull
+          docker compose up -d --force-recreate
 
   deploy-backend:
     name: Deploy Backend Services to EC2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, backend-runner]  # updated to use self-hosted runner
     needs: build
 
     steps:
@@ -133,17 +127,11 @@ jobs:
 
       - run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
 
-      - name: SSH to backend instance
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.BACKEND_HOST }}
-          username: ${{ secrets.BACKEND_USER }}
-          key: ${{ secrets.BACKEND_KEY }}
-          port: ${{ secrets.BACKEND_PORT }}
-          script: |
-            cd ft_transcendence/backend
-            for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-              yq e ".services.${service}.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:${service}'" -i docker-compose.yml
-            done
-            docker compose pull
-            docker compose up -d --force-recreate
+      - name: Update and restart backend services
+        run: |
+          cd ft_transcendence/backend
+          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
+            yq e ".services.${service}.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:${service}'" -i docker-compose.yml
+          done
+          docker compose pull
+          docker compose up -d --force-recreate
