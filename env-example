@@ -47,7 +47,7 @@ FriendService_DB_HOST=
 FriendService_DB_PORT=
 
 GamePlayService_SECRET_KEY=""
-GamePlayService_DEBUG=
+GamePlayService_DEBUG=True
 
 MailService_SECRET_KEY=""
 MailService_DEBUG=
