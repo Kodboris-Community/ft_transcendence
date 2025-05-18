@@ -15,6 +15,8 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
     networks:
       - backend
+    ports:
+      - "8001:8001"
     hostname: authservice
 
   bucketservice:
@@ -32,6 +34,8 @@ services:
       - DB_PORT=5432
     networks:
       - backend
+    ports:
+      - "8014:8014"
     hostname: bucketservice
 
   friendservice:
@@ -49,6 +53,8 @@ services:
       - DB_PORT=5432
     networks:
       - backend
+    ports:
+      - "8012:8012"
     hostname: friendservice
 
   gameplayservice:
@@ -63,6 +69,8 @@ services:
       - REDIS_PORT=6379
     networks:
       - backend
+    ports:
+      - "8011:8011"
     hostname: gameplayservice
 
   gameservice:
@@ -80,6 +88,8 @@ services:
       - DB_PORT=5432
     networks:
       - backend
+    ports:
+      - "8010:8010"
     hostname: gameservice
 
   mailservice:
@@ -104,6 +114,8 @@ services:
       - EMAIL_HOST_PASSWORD=${MailService_EMAIL_HOST_PASSWORD}
     networks:
       - backend
+    ports:
+      - "8005:8005"
     hostname: mailservice
 
   statusservice:
@@ -116,6 +128,8 @@ services:
       - REDIS_PORT=6379
     networks:
       - backend
+    ports:
+      - "8020:8020"
     hostname: statusservice
 
   usermanagement:
@@ -140,6 +154,8 @@ services:
       - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
     networks:
       - backend
+    ports:
+      - "8004:8004"
     hostname: usermanagement
 
   rabbitmq:
@@ -152,7 +168,7 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "node_health_check"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 30s
       timeout: 10s
       retries: 5

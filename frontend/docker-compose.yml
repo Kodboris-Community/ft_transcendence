@@ -12,8 +12,9 @@ services:
       - SERVER_NAME=${SERVER_NAME}
     ports:
       - "443:443"
+      - "80:80"  # Optional: Expose port 80 to allow Let's Encrypt HTTP challenges
     volumes:
-      - .:/usr/share/nginx/html
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # Mount Let's Encrypt certs
     networks:
       - frontend
     hostname: frontend
