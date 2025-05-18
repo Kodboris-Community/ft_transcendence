@@ -35,25 +35,25 @@ jobs:
 
       - name: Build, tag, and push Docker images
         run: |
-          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY=kodmicroservices
+          ECR_REGISTRY=: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: kodmicroservices
 
           # Build frontend
-          cd ft_transcendence/frontend
+          cd frontend
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
-          cd ../..
+          cd ..
 
           # Build apigateway
-          cd ft_transcendence/apigateway
+          cd apigateway
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:apigateway .
-          cd ../..
+          cd ..
 
           # Build backend microservices
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
             echo "Building $service..."
-            cd ft_transcendence/backend/$service
+            cd backend/$service
             docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$service .
-            cd ../../..
+            cd ../..
           done
 
           echo "Pushing all images..."
