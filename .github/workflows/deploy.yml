@@ -1,0 +1,51 @@
+name: Deploy ft_transcendence
+
+on:
+  push:
+    branches:
+      - apigateway/microservices_Jaiye
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: [self-hosted, backend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy backend with Docker Compose
+        working-directory: backend/backend
+        run: |
+          echo "Deploying backend..."
+          docker compose down
+          docker compose up -d --build
+
+  deploy-apigateway:
+    name: Deploy API Gateway
+    needs: deploy-backend
+    runs-on: [self-hosted, apigateway]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy API Gateway with Docker Compose
+        working-directory: apigateway/apigateway
+        run: |
+          echo "Deploying API Gateway..."
+          docker compose down
+          docker compose up -d --build
+
+  deploy-frontend:
+    name: Deploy Frontend 
+    needs: deploy-apigateway
+    runs-on: [self-hosted, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy Frontend with Docker Compose
+        working-directory: app/frontend
+        run: |
+          echo "Deploying frontend..."
+          docker compose down
+          docker compose up -d --build
