@@ -113,7 +113,7 @@ jobs:
 
       - name: Update and restart API Gateway service
         run: |
-          cd ft_transcendence/ft_transcendence/apigateway
+          cd apigateway
           yq e ".services.apigateway.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:apigateway'" -i docker-compose.yml
           docker compose pull
           docker compose up -d --force-recreate
@@ -126,7 +126,7 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
-
+        
       - uses: actions/download-artifact@v4
         with:
           name: ecr-registry
@@ -135,7 +135,7 @@ jobs:
 
       - name: Update and restart backend services
         run: |
-          cd ft_transcendence/ft_transcendence/backend
+          cd backend
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
             yq e ".services.${service}.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:${service}'" -i docker-compose.yml
           done
