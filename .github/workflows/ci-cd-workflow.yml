@@ -14,8 +14,8 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  build:
-    name: Build and Push Docker Images
+  build-frontend:
+    name: Build and Push Frontend to ECR
     runs-on: ubuntu-latest
 
     steps:
@@ -33,35 +33,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker images
+      - name: Build and push frontend image
         run: |
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY=kodmicroservices
 
-          # Build frontend
           cd frontend
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
-          cd ..
-
-          # Build apigateway
-          cd apigateway
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:apigateway .
-          cd ..
-
-          # Build backend microservices
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Building $service..."
-            cd backend/$service
-            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$service .
-            cd ../..
-          done
-
-          echo "Pushing all images..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:apigateway
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$service
-          done
 
           echo "$ECR_REGISTRY" > ecr_registry.txt
 
@@ -74,7 +53,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend to EC2
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-frontend
 
     steps:
       - uses: actions/download-artifact@v4
@@ -97,59 +76,36 @@ jobs:
             docker compose up -d --force-recreate
 
   deploy-apigateway:
-    name: Deploy API Gateway to EC2
+    name: Deploy API Gateway to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, apigateway-runner]
-    needs: build
+    needs: build-frontend
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: ecr-registry
-
-      - name: Set ECR_REGISTRY environment variable
-        run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
-
-      - name: Install yq
-        run: |
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-          sudo chmod +x /usr/bin/yq
-
-      - name: Update and restart API Gateway service
+      - name: Build and deploy API Gateway locally
         run: |
           cd apigateway
-          yq e ".services.apigateway.image = \"${ECR_REGISTRY}/kodmicroservices:apigateway\"" -i docker-compose.yml
-          docker compose pull
-          docker compose up -d --force-recreate
+          docker build -t kodmicroservices:apigateway .
+          docker compose up -d --build --force-recreate
 
   deploy-backend:
-    name: Deploy Backend Services to EC2
+    name: Deploy Backend to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, backend-runner]
-    needs: build
+    needs: build-frontend
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: ecr-registry
-
-      - name: Set ECR_REGISTRY environment variable
-        run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
-
-      - name: Install yq
-        run: |
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-          sudo chmod +x /usr/bin/yq
-
-      - name: Update and restart backend services
+      - name: Build and deploy backend services locally
         run: |
           cd backend
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            yq e ".services.${service}.image = \"${ECR_REGISTRY}/kodmicroservices:${service}\"" -i docker-compose.yml
+            echo "Building $service..."
+            cd $service
+            docker build -t kodmicroservices:$service .
+            cd ..
           done
-          docker compose pull
-          docker compose up -d --force-recreate
+          docker compose up -d --build --force-recreate
