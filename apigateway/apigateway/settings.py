@@ -65,10 +65,10 @@ EXCLUDED_ROUTES = ['/user/login', '/user/register', '/user/2fa', '/user/pwd/forg
                    '/user/pwd/change', '/user/image', '/user/image/serve', '/favicon.ico']
 
 SERVICE_ROUTES = {
-    '/auth': 'http://192.168.1.111:8001',
-    '/friends': 'http://192.168.1.111:8012',
-    '/game': 'http://192.168.1.111:8010',
-    '/user': 'http://192.168.1.111:8004',
+    '/auth': 'http://192.168.1.107:8001',
+    '/friends': 'http://192.168.1.107:8012',
+    '/game': 'http://192.168.1.107:8010',
+    '/user': 'http://192.168.1.107:8004',
 }
 
 ROOT_URLCONF = 'apigateway.urls'
