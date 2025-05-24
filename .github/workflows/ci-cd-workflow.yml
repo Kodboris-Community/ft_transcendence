@@ -57,7 +57,6 @@ jobs:
   deploy-backend:
     name: Deploy Backend to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, backend-runner]
-    needs: build
 
     steps:
       - name: Checkout source code
@@ -77,7 +76,6 @@ jobs:
   deploy-apigateway:
     name: Deploy API Gateway to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, apigate-runner]
-    needs: deploy-backend
 
     steps:
       - name: Checkout source code
@@ -92,7 +90,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend to EC2
     runs-on: ubuntu-latest
-    needs: deploy-apigateway
+    needs: build
 
     steps:
       - uses: actions/download-artifact@v4
