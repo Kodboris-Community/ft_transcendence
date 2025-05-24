@@ -14,8 +14,8 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  build-frontend:
-    name: Build and Push Frontend to ECR
+  build:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
 
     steps:
@@ -33,13 +33,17 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push frontend image
+      - name: Build, tag, and push Docker images
         run: |
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY=kodmicroservices
 
+          # Build frontend
           cd frontend
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
+          cd ..
+          
+          echo "Pushing all images..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend
 
           echo "$ECR_REGISTRY" > ecr_registry.txt
@@ -53,7 +57,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend to EC2
     runs-on: ubuntu-latest
-    needs: build-frontend
+    needs: build
 
     steps:
       - uses: actions/download-artifact@v4
@@ -78,7 +82,6 @@ jobs:
   deploy-apigateway:
     name: Deploy API Gateway to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, apigateway-runner]
-    needs: build-frontend
 
     steps:
       - name: Checkout source code
@@ -93,7 +96,6 @@ jobs:
   deploy-backend:
     name: Deploy Backend to EC2 (Self-hosted)
     runs-on: [self-hosted, linux, backend-runner]
-    needs: build-frontend
 
     steps:
       - name: Checkout source code
