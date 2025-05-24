@@ -40,7 +40,7 @@ jobs:
 
           # Build frontend
           cd frontend
-          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
           cd ..
           
           echo "Pushing all images..."
@@ -54,10 +54,45 @@ jobs:
           name: ecr-registry
           path: ecr_registry.txt
 
+  deploy-backend:
+    name: Deploy Backend to EC2 (Self-hosted)
+    runs-on: [self-hosted, linux, backend-runner]
+    needs: build
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Build and deploy backend services locally
+        run: |
+          cd backend
+          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
+            echo "Building $service..."
+            cd $service
+            docker build -t kodmicroservices:$service .
+            cd ..
+          done
+          docker compose up -d --build --force-recreate
+
+  deploy-apigateway:
+    name: Deploy API Gateway to EC2 (Self-hosted)
+    runs-on: [self-hosted, linux, apigate-runner]
+    needs: deploy-backend
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Build and deploy API Gateway locally
+        run: |
+          cd apigateway
+          docker build -t kodmicroservices:apigateway .
+          docker compose up -d --build --force-recreate
+
   deploy-frontend:
     name: Deploy Frontend to EC2
     runs-on: ubuntu-latest
-    needs: build
+    needs: deploy-apigateway
 
     steps:
       - uses: actions/download-artifact@v4
@@ -76,41 +111,5 @@ jobs:
           script: |
             cd ft_transcendence/frontend
             yq e ".services.frontend.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:frontend'" -i docker-compose.yml
-            docker compose down
             docker compose pull
             docker compose up -d --force-recreate
-
-  deploy-apigateway:
-    name: Deploy API Gateway to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, apigate-runner]
-
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Build and deploy API Gateway locally
-        run: |
-          cd apigateway
-          docker compose down
-          docker build --no-cache -t kodmicroservices:apigateway .
-          docker compose up -d --build --force-recreate
-
-  deploy-backend:
-    name: Deploy Backend to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, backend-runner]
-
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Build and deploy backend services locally
-        run: |
-          cd backend
-          docker compose down
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Building $service..."
-            cd $service
-            docker build --no-cache -t kodmicroservices:$service .
-            cd ..
-          done
-          docker compose up -d --build --force-recreate
