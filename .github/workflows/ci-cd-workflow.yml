@@ -81,7 +81,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, apigateway-runner]
+    runs-on: [self-hosted, linux, apigate-runner]
 
     steps:
       - name: Checkout source code
