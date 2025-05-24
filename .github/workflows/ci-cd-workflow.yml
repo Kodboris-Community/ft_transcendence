@@ -98,7 +98,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway to EC2
-    runs-on: [self-hosted, linux, apigateway-runner]  # updated to use self-hosted runner
+    runs-on: [self-hosted, linux, apigateway-runner]
     needs: build
 
     steps:
@@ -109,35 +109,47 @@ jobs:
         with:
           name: ecr-registry
 
-      - run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
+      - name: Set ECR_REGISTRY environment variable
+        run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
 
       - name: Update and restart API Gateway service
         run: |
           cd apigateway
-          yq e ".services.apigateway.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:apigateway'" -i docker-compose.yml
+          yq e ".services.apigateway.image = \"${ECR_REGISTRY}/kodmicroservices:apigateway\"" -i docker-compose.yml
           docker compose pull
           docker compose up -d --force-recreate
 
   deploy-backend:
     name: Deploy Backend Services to EC2
-    runs-on: [self-hosted, linux, backend-runner]  # updated to use self-hosted runner
+    runs-on: [self-hosted, linux, backend-runner]
     needs: build
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
-        
+
       - uses: actions/download-artifact@v4
         with:
           name: ecr-registry
 
-      - run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
+      - name: Set ECR_REGISTRY environment variable
+        run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
 
       - name: Update and restart backend services
         run: |
           cd backend
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            yq e ".services.${service}.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:${service}'" -i docker-compose.yml
+            yq e ".services.${service}.image = \"${ECR_REGISTRY}/kodmicroservices:${service}\"" -i docker-compose.yml
           done
           docker compose pull
           docker compose up -d --force-recreate
