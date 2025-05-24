@@ -40,7 +40,7 @@ jobs:
 
           # Build frontend
           cd frontend
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
+          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
           cd ..
           
           echo "Pushing all images..."
@@ -76,6 +76,7 @@ jobs:
           script: |
             cd ft_transcendence/frontend
             yq e ".services.frontend.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:frontend'" -i docker-compose.yml
+            docker compose down
             docker compose pull
             docker compose up -d --force-recreate
 
@@ -90,7 +91,8 @@ jobs:
       - name: Build and deploy API Gateway locally
         run: |
           cd apigateway
-          docker build -t kodmicroservices:apigateway .
+          docker compose down
+          docker build --no-cache -t kodmicroservices:apigateway .
           docker compose up -d --build --force-recreate
 
   deploy-backend:
@@ -104,10 +106,11 @@ jobs:
       - name: Build and deploy backend services locally
         run: |
           cd backend
+          docker compose down
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
             echo "Building $service..."
             cd $service
-            docker build -t kodmicroservices:$service .
+            docker build --no-cache -t kodmicroservices:$service .
             cd ..
           done
           docker compose up -d --build --force-recreate
