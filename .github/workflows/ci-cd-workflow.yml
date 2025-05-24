@@ -63,6 +63,15 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Inject .env files into each backend microservice
+        run: |
+          cd backend
+          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
+            echo "Injecting .env for $service..."
+            mkdir -p $service
+            echo "${{ secrets.BACKEND_ENV_FILE }}" > $service/.env
+          done
+
       - name: Build and deploy backend services locally
         run: |
           cd backend
@@ -72,6 +81,7 @@ jobs:
             docker build -t kodmicroservices:$service .
             cd ..
           done
+          docker compose down
           docker compose up -d --build --force-recreate
 
   deploy-apigateway:
@@ -83,9 +93,15 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Inject .env into API Gateway
+        run: |
+          cd apigateway
+          echo "${{ secrets.APIGATEWAY_ENV_FILE }}" > .env
+
       - name: Build and deploy API Gateway locally
         run: |
           cd apigateway
+          docker compose down
           docker build -t kodmicroservices:apigateway .
           docker compose up -d --build --force-recreate
 
