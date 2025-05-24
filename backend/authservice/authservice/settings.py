@@ -36,7 +36,7 @@ INTRA_CALLBACK_URL = os.environ.get('INTRA_CALLBACK_URL')
 
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL')
-USER_MANAGEMENT_URL = "http://usermanagement:8004"
+USER_MANAGEMENT_URL = "http://192.168.1.107:8004"
 
 # Application definition
 
