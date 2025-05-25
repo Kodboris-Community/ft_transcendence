@@ -66,22 +66,14 @@ jobs:
       - name: Inject .env files into each backend microservice
         run: |
           cd backend
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Injecting .env for $service..."
-            mkdir -p $service
-            echo "${{ secrets.BACKEND_ENV_FILE }}" > $service/.env
+            echo "${{ secrets.BACKEND_ENV_FILE }}" > .env
           done
 
       - name: Build and deploy backend services locally
         run: |
           cd backend
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Building $service..."
-            cd $service
-            docker build -t kodmicroservices:$service .
-            cd ..
-          done
           docker compose down
+          docker build -t kodmicroservices:backend .
           docker compose up -d --build --force-recreate
 
   deploy-apigateway:

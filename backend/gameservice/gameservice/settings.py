@@ -43,8 +43,8 @@ INSTALLED_APPS = [
 ]
 
 SERVICE_ROUTES = {
-    '/auth': 'http://192.168.1.107:8001',
-    '/user': 'http://192.168.1.107:8004',
+    '/auth': 'http://authservice:8001',
+    '/user': 'http://usermanagement:8004',
 }
 
 MIDDLEWARE = [

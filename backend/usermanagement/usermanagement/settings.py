@@ -57,7 +57,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 
 SERVICE_ROUTES = {
-    '/auth': 'http://192.168.1.107:8001',
+    '/auth': 'http://authservice:8001',
 }
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL')

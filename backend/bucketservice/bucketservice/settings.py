@@ -29,9 +29,9 @@ DEBUG = os.environ.get('DEBUG')
 ALLOWED_HOSTS = ['*']
 
 SERVICE_ROUTES = {
-    '/auth': 'http://192.168.1.107:8001',
-    '/user': 'http://192.168.1.107:8004',
-    '/friend': 'http://192.168.1.107:8012',
+    '/auth': 'http://authservice:8001',
+    '/user': 'http://usermanagement:8004',
+    '/friend': 'http://friendservice:8012',
 }
 
 # Application definition
