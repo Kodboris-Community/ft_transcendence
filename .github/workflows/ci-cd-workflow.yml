@@ -72,8 +72,13 @@ jobs:
       - name: Build and deploy backend services locally
         run: |
           cd backend
+          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
+            echo "Building $service..."
+            cd $service
+            docker build -t kodmicroservices:$service .
+            cd ..
+          done
           docker compose down
-          docker build -t kodmicroservices:backend .
           docker compose up -d --build --force-recreate
 
   deploy-apigateway:
