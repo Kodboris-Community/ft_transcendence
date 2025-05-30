@@ -119,7 +119,7 @@ jobs:
         with:
           host: ${{ secrets.TEEWAI_AZURE_FRONTEND_HOST }}
           username: ${{ secrets.TEEWAI_AZURE_FRONTEND_USER }}
-          key: ${{ secrets.TEEWAI_FRONTEND_KEY }}
+          key: ${{ secrets.TEEWAI_AZURE_FRONTEND_KEY }}
           port: ${{ secrets.PORT }}
           script: |
             cd ft_transcendence/frontend
