@@ -118,7 +118,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.TEEWAI_AZURE_FRONTEND_HOST }}
-          username: ${{ secrets.TEEWAI_FRONTEND_USER }}
+          username: ${{ secrets.TEEWAI_AZURE_FRONTEND_USER }}
           key: ${{ secrets.TEEWAI_FRONTEND_KEY }}
           port: ${{ secrets.PORT }}
           script: |
