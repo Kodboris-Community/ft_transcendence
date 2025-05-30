@@ -9,9 +9,8 @@ on:
       - taiwo-transcendence
 
 env:
-  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
-  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_TEEWAI_RESOURCE_GROUP }}
-  AZURE_CREDENTIALS: ${{ secrets.AZURE_TEEWAI_CREDENTIALS }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -23,33 +22,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          creds: ${{ secrets.AZURE_TEEWAI_CREDENTIALS }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Azure Container Registry (ACR)
-        run: |
-          az acr login --name ${{ env.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker images
         run: |
-          ACR_NAME=${{ env.AZURE_TEEWAI_CONTAINER_REGISTRY }}
-          IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY=kodmicroservices
 
           # Build frontend
           cd frontend
-          docker build -t $IMAGE_URI:frontend-${{ env.IMAGE_TAG }} .
-          docker push $IMAGE_URI:frontend-${{ env.IMAGE_TAG }}
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend .
           cd ..
+          
+          echo "Pushing all images..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend
 
-          echo "$IMAGE_URI" > acr_registry.txt
+          echo "$ECR_REGISTRY" > ecr_registry.txt
 
-      - name: Upload ACR Registry Info
+      - name: Upload ECR Registry Info
         uses: actions/upload-artifact@v4
         with:
-          name: acr-registry
-          path: acr_registry.txt
+          name: ecr-registry
+          path: ecr_registry.txt
 
   deploy-backend:
     name: Deploy Backend to EC2 (Self-hosted)
@@ -110,9 +113,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: acr-registry
+          name: ecr-registry
 
-      - run: echo "ACR_REGISTRY=$(cat acr_registry.txt)" >> $GITHUB_ENV
+      - run: echo "ECR_REGISTRY=$(cat ecr_registry.txt)" >> $GITHUB_ENV
 
       - name: SSH to frontend instance
         uses: appleboy/ssh-action@v1.0.3
@@ -123,6 +126,6 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             cd ft_transcendence/frontend
-            yq e ".services.frontend.image = '${{ env.ACR_REGISTRY }}:frontend-${{ env.IMAGE_TAG }}'" -i docker-compose.yml
+            yq e ".services.frontend.image = '${{ env.ECR_REGISTRY }}/kodmicroservices:frontend'" -i docker-compose.yml
             docker compose pull
             docker compose up -d --force-recreate

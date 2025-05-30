@@ -203,7 +203,7 @@ services:
       POSTGRES_PASSWORD: ${GameService_DB_PASSWORD}
       POSTGRES_DB: ${GameService_DB_NAME}
     ports:
-      - "5433:5432"
+      - "5433:5433"
     networks:
       - backend
 
@@ -215,7 +215,7 @@ services:
       POSTGRES_PASSWORD: ${FriendService_DB_PASSWORD}
       POSTGRES_DB: ${FriendService_DB_NAME}
     ports:
-      - "5434:5432"
+      - "5434:5434"
     networks:
       - backend
 
@@ -227,7 +227,7 @@ services:
       POSTGRES_PASSWORD: ${BucketService_DB_PASSWORD}
       POSTGRES_DB: ${BucketService_DB_NAME}
     ports:
-      - "5435:5432"
+      - "5435:5435"
     networks:
       - backend
 
