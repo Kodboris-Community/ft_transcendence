@@ -16,7 +16,9 @@ jobs:
       - name: Deploy backend with Docker Compose
         working-directory: backend
         run: |
+
           echo "Deploying backend..."
+          echo "${{ secrets.BACK_ENV_FILE }}" > .env
           docker compose down
           docker compose up -d --build
 
@@ -32,6 +34,7 @@ jobs:
         working-directory: apigateway
         run: |
           echo "Deploying API Gateway..."
+          echo "${{ secrets.APIG_ENV_FILE }}" > .env
           docker compose down
           docker compose up -d --build
 
@@ -47,5 +50,6 @@ jobs:
         working-directory: frontend
         run: |
           echo "Deploying frontend..."
+          echo "${{ secrets.FRONT_ENV_FILE }}" > .env
           docker compose down
           docker compose up -d --build
