@@ -15,7 +15,7 @@ ApiGateway_SECRET_KEY=""
 ApiGateway_DEBUG=
 
 GameService_SECRET_KEY=""
-GameService_DEBUG=
+GameService_DEBUG=remove
 GameService_DB_NAME=
 GameService_DB_USER=
 GameService_DB_PASSWORD=
