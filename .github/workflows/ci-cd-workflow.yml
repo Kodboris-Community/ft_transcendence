@@ -88,7 +88,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, apigateway-azure-runner]
+    runs-on: [self-hosted, linux, gateway-azure-runner]
     needs: deploy-backend
 
     steps:
