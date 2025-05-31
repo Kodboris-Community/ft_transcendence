@@ -68,11 +68,7 @@ jobs:
       - name: Inject .env files into each backend microservice
         run: |
           cd backend
-          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Injecting .env for $service..."
-            mkdir -p $service
-            echo "${{ secrets.BACKEND_ENV_FILE }}" > $service/.env
-          done
+          echo "${{ secrets.BACKEND_ENV_FILE }}" > .env
 
       - name: Build and deploy backend services locally
         run: |
