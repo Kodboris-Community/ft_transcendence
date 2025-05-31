@@ -30,11 +30,16 @@ jobs:
 
       - name: Login to Azure Container Registry (ACR)
         run: |
-          az acr login --name ${{ env.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+          echo "Logging in to Azure Container Registry..."
+          echo $AZURE_CONTAINER_REGISTRY
+          echo $AZURE_RESOURCE_GROUP
+          echo $AZURE_CREDENTIALS
+          echo $IMAGE_TAG
+          az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
 
       - name: Build, tag, and push Docker images
         run: |
-          ACR_NAME=${{ env.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+          ACR_NAME=${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
           IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
 
           # Build frontend
