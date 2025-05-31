@@ -58,7 +58,7 @@ jobs:
 
   deploy-backend:
     name: Deploy Backend to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, backend-runner]
+    runs-on: [self-hosted, linux, backend-azure-runner]
     needs: build
 
     steps:
@@ -88,7 +88,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway to EC2 (Self-hosted)
-    runs-on: [self-hosted, linux, apigate-runner]
+    runs-on: [self-hosted, linux, apigate-azure-runner]
     needs: deploy-backend
 
     steps:
