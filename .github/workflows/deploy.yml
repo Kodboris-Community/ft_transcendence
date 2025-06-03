@@ -25,7 +25,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Scan all backend services with Trivy
+      - name: Run Trivy scans on backend services
         run: |
           mkdir -p trivy-reports
           for dir in backend/*; do
@@ -37,11 +37,18 @@ jobs:
             fi
           done
 
-      - name: Upload Trivy Reports - Backend
-        uses: actions/upload-artifact@v3.1.3
+      - name: Email Trivy Scan Results (Backend)
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: backend-trivy-reports
-          path: trivy-reports/
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "Trivy Scan Logs - Backend"
+          body: "Attached are the backend Trivy scan reports."
+          to: victordurojaiye2000@gmail.com
+          from: "Trivy Scanner <${{ secrets.EMAIL_USER }}>"
+          attachments: trivy-reports/*.txt
 
   scan-apigateway:
     name: Trivy Scan - API Gateway
@@ -69,11 +76,18 @@ jobs:
           docker build -t apigateway-image ./apigateway
           trivy image --exit-code 0 --severity CRITICAL,HIGH --format table --output trivy-reports/apigateway.txt apigateway-image
 
-      - name: Upload Trivy Report - API Gateway
-        uses: actions/upload-artifact@v3.1.3
+      - name: Email Trivy Scan Results (API Gateway)
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: apigateway-trivy-report
-          path: trivy-reports/
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "Trivy Scan Logs - API Gateway"
+          body: "Attached are the API Gateway Trivy scan reports."
+          to: victordurojaiye2000@gmail.com
+          from: "Trivy Scanner <${{ secrets.EMAIL_USER }}>"
+          attachments: trivy-reports/*.txt
 
   scan-frontend:
     name: Trivy Scan - Frontend
@@ -101,11 +115,18 @@ jobs:
           docker build -t frontend-image ./frontend
           trivy image --exit-code 0 --severity CRITICAL,HIGH --format table --output trivy-reports/frontend.txt frontend-image
 
-      - name: Upload Trivy Report - Frontend
-        uses: actions/upload-artifact@v3.1.3
+      - name: Email Trivy Scan Results (Frontend)
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: frontend-trivy-report
-          path: trivy-reports/
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "Trivy Scan Logs - Frontend"
+          body: "Attached are the frontend Trivy scan reports."
+          to: victordurojaiye2000@gmail.com
+          from: "Trivy Scanner <${{ secrets.EMAIL_USER }}>"
+          attachments: trivy-reports/*.txt
 
   deploy-backend:
     name: Deploy Backend
