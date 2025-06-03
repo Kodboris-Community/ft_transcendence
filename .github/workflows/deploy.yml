@@ -7,88 +7,81 @@ on:
 
 jobs:
   scan-backend:
-    name: Trivy Scan - Backend Services
+    name: Scan Backend Services
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Trivy
+      - name: Set up Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          sudo mv trivy /usr/local/bin/
 
-      - name: Scan all backend services with Trivy
+      - name: Build and Scan Backend Services
         run: |
-          for dir in backend/*; do
-            if [ -f "$dir/Dockerfile" ]; then
-              service=$(basename "$dir")
-              echo "🔍 Scanning $service..."
-              docker build -t $service-image "$dir"
-              trivy image --exit-code 0 --severity CRITICAL,HIGH $service-image
-            fi
+          mkdir trivy-backend-reports
+          for dir in backend/*/ ; do
+            service=$(basename "$dir")
+            docker build -t "$service-image" "./backend/$service"
+            trivy image --severity CRITICAL,HIGH --format table --output "trivy-backend-reports/${service}_trivy_report.txt" "$service-image"
           done
 
+      - name: Upload Backend Trivy Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-backend-reports
+          path: trivy-backend-reports/
+
   scan-apigateway:
-    name: Trivy Scan - API Gateway
-    needs: scan-backend
+    name: Scan API Gateway
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Trivy
+      - name: Set up Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          sudo mv trivy /usr/local/bin/
 
-      - name: Build and Scan API Gateway Image
+      - name: Build and Scan API Gateway
         run: |
           docker build -t apigateway-image ./apigateway
-          trivy image --exit-code 0 --severity CRITICAL,HIGH apigateway-image
+          trivy image --severity CRITICAL,HIGH --format table --output trivy-apigateway.txt apigateway-image
+
+      - name: Upload API Gateway Trivy Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-apigateway-report
+          path: trivy-apigateway.txt
 
   scan-frontend:
-    name: Trivy Scan - Frontend
-    needs: scan-apigateway
+    name: Scan Frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Trivy
+      - name: Set up Trivy
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          sudo mv trivy /usr/local/bin/
 
-      - name: Build and Scan Frontend Image
+      - name: Build and Scan Frontend
         run: |
           docker build -t frontend-image ./frontend
-          trivy image --exit-code 0 --severity CRITICAL,HIGH frontend-image
+          trivy image --severity CRITICAL,HIGH --format table --output trivy-frontend.txt frontend-image
+
+      - name: Upload Frontend Trivy Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-frontend-report
+          path: trivy-frontend.txt
 
   deploy-backend:
     name: Deploy Backend
-    needs: scan-frontend
+    needs: scan-backend
     runs-on: [self-hosted, backend]
     steps:
       - name: Checkout code
@@ -104,7 +97,7 @@ jobs:
 
   deploy-apigateway:
     name: Deploy API Gateway
-    needs: deploy-backend
+    needs: [deploy-backend, scan-apigateway]
     runs-on: [self-hosted, apigateway]
     steps:
       - name: Checkout code
@@ -119,8 +112,8 @@ jobs:
           docker compose up -d --build
 
   deploy-frontend:
-    name: Deploy Frontend
-    needs: deploy-apigateway
+    name: Deploy Frontend 
+    needs: [deploy-apigateway, scan-frontend]
     runs-on: [self-hosted, frontend]
     steps:
       - name: Checkout code
