@@ -20,3 +20,89 @@ jobs:
         run: |
           for dir in backend/*; do
             if [ -f "$dir/Dockerfile" ]; then
+              service=$(basename "$dir")
+              echo "🔍 Scanning $service..."
+              docker build -t $service-image "$dir"
+              trivy image --exit-code 0 --severity CRITICAL,HIGH $service-image
+            fi
+          done
+
+  scan-apigateway:
+    name: Trivy Scan - API Gateway
+    needs: scan-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Scan API Gateway Image
+        run: |
+          docker build -t apigateway-image ./apigateway
+          trivy image --exit-code 0 --severity CRITICAL,HIGH apigateway-image
+
+  scan-frontend:
+    name: Trivy Scan - Frontend
+    needs: scan-apigateway
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Scan Frontend Image
+        run: |
+          docker build -t frontend-image ./frontend
+          trivy image --exit-code 0 --severity CRITICAL,HIGH frontend-image
+
+  deploy-backend:
+    name: Deploy Backend
+    needs: scan-frontend
+    runs-on: [self-hosted, backend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy backend with Docker Compose
+        working-directory: backend
+        run: |
+          echo "Deploying backend..."
+          echo "${{ secrets.BACK_ENV_FILE }}" > .env
+          docker compose down
+          docker compose up -d --build
+
+  deploy-apigateway:
+    name: Deploy API Gateway
+    needs: deploy-backend
+    runs-on: [self-hosted, apigateway]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy API Gateway with Docker Compose
+        working-directory: apigateway
+        run: |
+          echo "Deploying API Gateway..."
+          echo "${{ secrets.APIG_ENV_FILE }}" > .env
+          docker compose down
+          docker compose up -d --build
+
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: deploy-apigateway
+    runs-on: [self-hosted, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy Frontend with Docker Compose
+        working-directory: frontend
+        run: |
+          echo "Deploying frontend..."
+          echo "${{ secrets.FRONT_ENV_FILE }}" > .env
+          docker compose down
+          docker compose up -d --build
