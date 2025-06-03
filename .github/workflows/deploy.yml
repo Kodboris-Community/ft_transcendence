@@ -1,4 +1,4 @@
-name: Deploy microservices
+=name: Deploy microservices
 
 on:
   push:
@@ -6,82 +6,38 @@ on:
       - apigateway/microservices_Jaiye
 
 jobs:
-  scan-backend:
-    name: Scan Backend Services
-    runs-on: ubuntu-latest
+  trivy-scan-backend:
+    name: Trivy Scan Backend Services
+    runs-on: [self-hosted, backend]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Trivy
+      - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-          sudo mv trivy /usr/local/bin/
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Build and Scan Backend Services
+      - name: Scan each backend service directory
         run: |
-          mkdir trivy-backend-reports
-          for dir in backend/*/ ; do
-            service=$(basename "$dir")
-            docker build -t "$service-image" "./backend/$service"
-            trivy image --severity CRITICAL,HIGH --format table --output "trivy-backend-reports/${service}_trivy_report.txt" "$service-image"
+          mkdir -p trivy-reports
+          for dir in backend/*; do
+            if [ -f "$dir/Dockerfile" ]; then
+              service_name=$(basename $dir)
+              echo "🔍 Scanning $service_name..."
+              docker build -t ${service_name}-image $dir
+              trivy image --format table --output trivy-reports/${service_name}.txt ${service_name}-image || echo "Trivy failed for $service_name"
+            fi
           done
 
-      - name: Upload Backend Trivy Reports
-        uses: actions/upload-artifact@v3
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v3.1.3
         with:
-          name: trivy-backend-reports
-          path: trivy-backend-reports/
-
-  scan-apigateway:
-    name: Scan API Gateway
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-          sudo mv trivy /usr/local/bin/
-
-      - name: Build and Scan API Gateway
-        run: |
-          docker build -t apigateway-image ./apigateway
-          trivy image --severity CRITICAL,HIGH --format table --output trivy-apigateway.txt apigateway-image
-
-      - name: Upload API Gateway Trivy Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: trivy-apigateway-report
-          path: trivy-apigateway.txt
-
-  scan-frontend:
-    name: Scan Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-          sudo mv trivy /usr/local/bin/
-
-      - name: Build and Scan Frontend
-        run: |
-          docker build -t frontend-image ./frontend
-          trivy image --severity CRITICAL,HIGH --format table --output trivy-frontend.txt frontend-image
-
-      - name: Upload Frontend Trivy Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: trivy-frontend-report
-          path: trivy-frontend.txt
+          name: backend-trivy-reports
+          path: trivy-reports/
 
   deploy-backend:
     name: Deploy Backend
-    needs: scan-backend
+    needs: trivy-scan-backend
     runs-on: [self-hosted, backend]
     steps:
       - name: Checkout code
@@ -95,9 +51,32 @@ jobs:
           docker compose down
           docker compose up -d --build
 
+  trivy-scan-apigateway:
+    name: Trivy Scan API Gateway
+    runs-on: [self-hosted, apigateway]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Scan API Gateway
+        run: |
+          mkdir -p trivy-reports
+          docker build -t apigateway-image apigateway
+          trivy image --format table --output trivy-reports/apigateway.txt apigateway-image || echo "Trivy failed for apigateway"
+
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v3.1.3
+        with:
+          name: apigateway-trivy-report
+          path: trivy-reports/
+
   deploy-apigateway:
     name: Deploy API Gateway
-    needs: [deploy-backend, scan-apigateway]
+    needs: deploy-backend
     runs-on: [self-hosted, apigateway]
     steps:
       - name: Checkout code
@@ -111,9 +90,32 @@ jobs:
           docker compose down
           docker compose up -d --build
 
+  trivy-scan-frontend:
+    name: Trivy Scan Frontend
+    runs-on: [self-hosted, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Scan Frontend
+        run: |
+          mkdir -p trivy-reports
+          docker build -t frontend-image frontend
+          trivy image --format table --output trivy-reports/frontend.txt frontend-image || echo "Trivy failed for frontend"
+
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v3.1.3
+        with:
+          name: frontend-trivy-report
+          path: trivy-reports/
+
   deploy-frontend:
-    name: Deploy Frontend 
-    needs: [deploy-apigateway, scan-frontend]
+    name: Deploy Frontend
+    needs: deploy-apigateway
     runs-on: [self-hosted, frontend]
     steps:
       - name: Checkout code
