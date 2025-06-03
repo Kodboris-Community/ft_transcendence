@@ -7,7 +7,7 @@ on:
 
 jobs:
   scan-backend:
-    name: Trivy Scan - Backend
+    name: Trivy Scan - Backend Services
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -16,105 +16,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Backend Image
-        run: docker build -t backend-image ./backend
-
-      - name: Scan Backend Image with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: backend-image
-          format: table
-          exit-code: 0
-          severity: CRITICAL,HIGH
-
-  scan-apigateway:
-    name: Trivy Scan - API Gateway
-    needs: scan-backend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build API Gateway Image
-        run: docker build -t apigateway-image ./apigateway
-
-      - name: Scan API Gateway Image with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: apigateway-image
-          format: table
-          exit-code: 0
-          severity: CRITICAL,HIGH
-
-  scan-frontend:
-    name: Trivy Scan - Frontend
-    needs: scan-apigateway
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Frontend Image
-        run: docker build -t frontend-image ./frontend
-
-      - name: Scan Frontend Image with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: frontend-image
-          format: table
-          exit-code: 0
-          severity: CRITICAL,HIGH
-
-  deploy-backend:
-    name: Deploy Backend
-    needs: scan-frontend
-    runs-on: [self-hosted, backend]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy backend with Docker Compose
-        working-directory: backend
+      - name: Scan all backend services with Trivy
         run: |
-          echo "Deploying backend..."
-          echo "${{ secrets.BACK_ENV_FILE }}" > .env
-          docker compose down
-          docker compose up -d --build
-
-  deploy-apigateway:
-    name: Deploy API Gateway
-    needs: deploy-backend
-    runs-on: [self-hosted, apigateway]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy API Gateway with Docker Compose
-        working-directory: apigateway
-        run: |
-          echo "Deploying API Gateway..."
-          echo "${{ secrets.APIG_ENV_FILE }}" > .env
-          docker compose down
-          docker compose up -d --build
-
-  deploy-frontend:
-    name: Deploy Frontend
-    needs: deploy-apigateway
-    runs-on: [self-hosted, frontend]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy Frontend with Docker Compose
-        working-directory: frontend
-        run: |
-          echo "Deploying frontend..."
-          echo "${{ secrets.FRONT_ENV_FILE }}" > .env
-          docker compose down
-          docker compose up -d --build
+          for dir in backend/*; do
+            if [ -f "$dir/Dockerfile" ]; then
