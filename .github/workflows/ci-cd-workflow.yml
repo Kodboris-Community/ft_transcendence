@@ -58,10 +58,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Azure CLI Login on self-hosted
+      - name: Install Azure CLI (if not present)
+        run: |
+          if ! command -v az &> /dev/null; then
+            echo "Azure CLI not found. Installing..."
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          else
+            echo "Azure CLI already installed."
+          fi
+
+      - name: Azure CLI Login
         run: |
           echo '${{ secrets.AZURE_TEEWAI_CREDENTIALS }}' > azurecreds.json
-          az login --service-principal -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
+          az login --service-principal \
+            -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
             -p ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientSecret }} \
             --tenant ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).tenantId }}
           az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
@@ -79,7 +89,7 @@ jobs:
           cd backend
 
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Processing $service..."
+            echo "Building and pushing $service..."
             docker build -t $IMAGE_URI:$service-${{ env.IMAGE_TAG }} $service
             docker push $IMAGE_URI:$service-${{ env.IMAGE_TAG }}
           done
@@ -96,10 +106,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Azure CLI Login on self-hosted
+      - name: Install Azure CLI (if not present)
+        run: |
+          if ! command -v az &> /dev/null; then
+            echo "Azure CLI not found. Installing..."
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          else
+            echo "Azure CLI already installed."
+          fi
+
+      - name: Azure CLI Login
         run: |
           echo '${{ secrets.AZURE_TEEWAI_CREDENTIALS }}' > azurecreds.json
-          az login --service-principal -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
+          az login --service-principal \
+            -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
             -p ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientSecret }} \
             --tenant ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).tenantId }}
           az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
