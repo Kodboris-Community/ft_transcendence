@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Build and Push Docker Images
+    name: Build and Push Frontend Image
     runs-on: ubuntu-latest
 
     steps:
@@ -29,20 +29,13 @@ jobs:
           creds: ${{ secrets.AZURE_TEEWAI_CREDENTIALS }}
 
       - name: Login to Azure Container Registry (ACR)
-        run: |
-          echo "Logging in to Azure Container Registry..."
-          echo $AZURE_CONTAINER_REGISTRY
-          echo $AZURE_RESOURCE_GROUP
-          echo $AZURE_CREDENTIALS
-          echo $IMAGE_TAG
-          az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+        run: az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
 
-      - name: Build, tag, and push Docker images
+      - name: Build and push frontend image
         run: |
           ACR_NAME=${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
           IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
 
-          # Build frontend
           cd frontend
           docker build -t $IMAGE_URI:frontend-${{ env.IMAGE_TAG }} .
           docker push $IMAGE_URI:frontend-${{ env.IMAGE_TAG }}
@@ -57,50 +50,75 @@ jobs:
           path: acr_registry.txt
 
   deploy-backend:
-    name: Deploy Backend to EC2 (Self-hosted)
+    name: Build, Deploy & Push Backend from EC2
     runs-on: [self-hosted, linux, backend-azure-runner]
     needs: build
 
     steps:
-      - name: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Inject .env files into each backend microservice
+      - name: Azure CLI Login on self-hosted
+        run: |
+          echo '${{ secrets.AZURE_TEEWAI_CREDENTIALS }}' > azurecreds.json
+          az login --service-principal -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
+            -p ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientSecret }} \
+            --tenant ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).tenantId }}
+          az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+
+      - name: Inject backend .env
         run: |
           cd backend
           echo "${{ secrets.BACKEND_ENV_FILE }}" > .env
 
-      - name: Build and deploy backend services locally
+      - name: Build, deploy, and push backend services
         run: |
+          ACR_NAME=${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+          IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
+
           cd backend
+
           for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
-            echo "Building $service..."
-            cd $service
-            docker build -t kodmicroservices:$service .
-            cd ..
+            echo "Processing $service..."
+            docker build -t $IMAGE_URI:$service-${{ env.IMAGE_TAG }} $service
+            docker push $IMAGE_URI:$service-${{ env.IMAGE_TAG }}
           done
+
           docker compose down
           docker compose up -d --build --force-recreate
 
   deploy-apigateway:
-    name: Deploy API Gateway to EC2 (Self-hosted)
+    name: Build, Deploy & Push API Gateway from EC2
     runs-on: [self-hosted, linux, gateway-azure-runner]
     needs: deploy-backend
 
     steps:
-      - name: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Azure CLI Login on self-hosted
+        run: |
+          echo '${{ secrets.AZURE_TEEWAI_CREDENTIALS }}' > azurecreds.json
+          az login --service-principal -u ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientId }} \
+            -p ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).clientSecret }} \
+            --tenant ${{ fromJson(secrets.AZURE_TEEWAI_CREDENTIALS).tenantId }}
+          az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
 
       - name: Inject .env into API Gateway
         run: |
           cd apigateway
           echo "${{ secrets.APIGATEWAY_ENV_FILE }}" > .env
 
-      - name: Build and deploy API Gateway locally
+      - name: Build, deploy, and push API Gateway
         run: |
+          ACR_NAME=${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+          IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
+
           cd apigateway
+          docker build -t $IMAGE_URI:apigateway-${{ env.IMAGE_TAG }} .
+          docker push $IMAGE_URI:apigateway-${{ env.IMAGE_TAG }}
+
           docker compose down
-          docker build -t kodmicroservices:apigateway .
           docker compose up -d --build --force-recreate
 
   deploy-frontend:
