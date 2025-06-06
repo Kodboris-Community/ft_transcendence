@@ -1,0 +1,129 @@
+name: CI/CD Pipeline for Microservice Architecture
+
+on:
+  push:
+    branches:
+      - taiwo-transcendence
+  pull_request:
+    branches:
+      - taiwo-transcendence
+
+env:
+  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_TEEWAI_RESOURCE_GROUP }}
+  AZURE_CREDENTIALS: ${{ secrets.AZURE_TEEWAI_CREDENTIALS }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_TEEWAI_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry (ACR)
+        run: |
+          echo "Logging in to Azure Container Registry..."
+          echo $AZURE_CONTAINER_REGISTRY
+          echo $AZURE_RESOURCE_GROUP
+          echo $AZURE_CREDENTIALS
+          echo $IMAGE_TAG
+          az acr login --name ${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+
+      - name: Build, tag, and push Docker images
+        run: |
+          ACR_NAME=${{ secrets.AZURE_TEEWAI_CONTAINER_REGISTRY }}
+          IMAGE_URI=$ACR_NAME.azurecr.io/kodmicroservices
+
+          # Build frontend
+          cd frontend
+          docker build -t $IMAGE_URI:frontend-${{ env.IMAGE_TAG }} .
+          docker push $IMAGE_URI:frontend-${{ env.IMAGE_TAG }}
+          cd ..
+
+          echo "$IMAGE_URI" > acr_registry.txt
+
+      - name: Upload ACR Registry Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: acr-registry
+          path: acr_registry.txt
+
+  deploy-backend:
+    name: Deploy Backend to EC2 (Self-hosted)
+    runs-on: [self-hosted, linux, backend-azure-runner]
+    needs: build
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Inject .env files into each backend microservice
+        run: |
+          cd backend
+          echo "${{ secrets.BACKEND_ENV_FILE }}" > .env
+
+      - name: Build and deploy backend services locally
+        run: |
+          cd backend
+          for service in authservice bucketservice friendservice gameplayservice gameservice mailservice statusservice usermanagement; do
+            echo "Building $service..."
+            cd $service
+            docker build -t kodmicroservices:$service .
+            cd ..
+          done
+          docker compose down
+          docker compose up -d --build --force-recreate
+
+  deploy-apigateway:
+    name: Deploy API Gateway to EC2 (Self-hosted)
+    runs-on: [self-hosted, linux, gateway-azure-runner]
+    needs: deploy-backend
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Inject .env into API Gateway
+        run: |
+          cd apigateway
+          echo "${{ secrets.APIGATEWAY_ENV_FILE }}" > .env
+
+      - name: Build and deploy API Gateway locally
+        run: |
+          cd apigateway
+          docker compose down
+          docker build -t kodmicroservices:apigateway .
+          docker compose up -d --build --force-recreate
+
+  deploy-frontend:
+    name: Deploy Frontend to EC2
+    runs-on: ubuntu-latest
+    needs: deploy-apigateway
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: acr-registry
+
+      - run: echo "ACR_REGISTRY=$(cat acr_registry.txt)" >> $GITHUB_ENV
+
+      - name: SSH to frontend instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.TEEWAI_AZURE_FRONTEND_HOST }}
+          username: ${{ secrets.TEEWAI_AZURE_FRONTEND_USER }}
+          key: ${{ secrets.TEEWAI_AZURE_FRONTEND_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd ft_transcendence/frontend
+            yq e ".services.frontend.image = '${{ env.ACR_REGISTRY }}:frontend-${{ env.IMAGE_TAG }}'" -i docker-compose.yml
+            docker compose pull
+            docker compose up -d --force-recreate
