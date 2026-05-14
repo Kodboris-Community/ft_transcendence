@@ -4,6 +4,9 @@ Build a static website explaining how this project was converted from a Monolith
 
 Final project of the Ecole 42 Common Core curriculum. An advanced version of the classic Pong game, built using a microservices architecture with AI opponents, remote multiplayer capabilities, and robust user authentication. Frontend developed with Pure JS as a Single Page Application. Backend developed with Django Rest Framework.
 
+<img width="714" height="407" alt="AZURE ACHI-DIG" src="https://github.com/user-attachments/assets/62d721e8-d50e-48a2-8101-e5fa6be61ad4" />
+
+
 Project Subject: https://cdn.intra.42.fr/pdf/pdf/117706/en.subject.pdf
 
 ## Table of Contents
